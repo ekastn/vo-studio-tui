@@ -37,6 +37,7 @@ Audio & Narration:
   p / <Space>            Play raw frame audio via mpv
   P                      Play padded frame audio via mpv
   s                      Stop active audio playback immediately
+  o                      Open frame audio in audio editor
   m / M                  Open Act master / Full master in audio editor
 
 General:

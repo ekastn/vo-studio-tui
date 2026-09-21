@@ -53,7 +53,11 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							f.ErrorMsg = msg.Err.Error()
 							m.StatusMsg = fmt.Sprintf("Frame %02d failed: %v", msg.FrameID, msg.Err)
 						} else {
-							f.Status = StatusRendered
+							if f.SlotDuration > 0 {
+								f.Status = StatusPadded
+							} else {
+								f.Status = StatusRendered
+							}
 							f.RawDuration = msg.Duration
 							f.Waveform = nil
 							f.ErrorMsg = ""
@@ -333,6 +337,14 @@ func (m *AppModel) handleNormalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.PlayingFile = filepath.Base(target)
 			m.StatusMsg = fmt.Sprintf("Playing %s...", m.PlayingFile)
 			return m, tea.Batch(playAudioCmd(target), playbackTickCmd())
+		}
+
+	case "o":
+		f := m.CurrentFrame()
+		if f != nil && m.Project != nil {
+			editor := m.Project.ExternalAudioEditor
+			m.StatusMsg = fmt.Sprintf("Opening frame %02d in %s...", f.ID, editor)
+			return m, openAudioEditorCmd(editor, []string{f.RawPath, f.PaddedPath})
 		}
 
 	case "m":

@@ -137,7 +137,23 @@ func (m *AppModel) executeCommand(cmdStr string) (tea.Model, tea.Cmd) {
 			return m, stopAudioCmd()
 		}
 
-	case "editor", "audacity":
+	case "act":
+		act := m.CurrentAct()
+		if act != nil && m.Project != nil {
+			editor := m.Project.ExternalAudioEditor
+			m.StatusMsg = fmt.Sprintf("Opening Act %d Master in %s...", act.ID, editor)
+			return m, openAudioEditorCmd(editor, []string{act.MasterPath})
+		}
+
+	case "full":
+		if m.Project != nil {
+			fullMaster := filepath.Join(m.Project.RootPath, "audio", "full_production_master.wav")
+			editor := m.Project.ExternalAudioEditor
+			m.StatusMsg = fmt.Sprintf("Opening Full Master in %s...", editor)
+			return m, openAudioEditorCmd(editor, []string{fullMaster})
+		}
+
+	case "editor", "audacity", "a":
 		f := m.CurrentFrame()
 		if f != nil && m.Project != nil {
 			editor := m.Project.ExternalAudioEditor
@@ -150,6 +166,8 @@ func (m *AppModel) executeCommand(cmdStr string) (tea.Model, tea.Cmd) {
 			m.Project.Voice.Speed = parts[1]
 			_ = SaveProject(m.Project)
 			m.StatusMsg = fmt.Sprintf("Voice speed set to %s", parts[1])
+		} else if m.Project != nil {
+			m.StatusMsg = fmt.Sprintf("Current voice speed: %s", m.Project.Voice.Speed)
 		}
 
 	case "profile":
@@ -157,6 +175,26 @@ func (m *AppModel) executeCommand(cmdStr string) (tea.Model, tea.Cmd) {
 			m.Project.Voice.ProfileID = parts[1]
 			_ = SaveProject(m.Project)
 			m.StatusMsg = fmt.Sprintf("Speaker profile set to %s", parts[1])
+		} else if m.Project != nil {
+			m.StatusMsg = fmt.Sprintf("Current speaker profile: %s", m.Project.Voice.ProfileID)
+		}
+
+	case "lang", "language":
+		if len(parts) > 1 && m.Project != nil {
+			m.Project.Voice.Language = strings.Join(parts[1:], " ")
+			_ = SaveProject(m.Project)
+			m.StatusMsg = fmt.Sprintf("Voice language set to %s", m.Project.Voice.Language)
+		} else if m.Project != nil {
+			m.StatusMsg = fmt.Sprintf("Current voice language: %s", m.Project.Voice.Language)
+		}
+
+	case "instruct":
+		if len(parts) > 1 && m.Project != nil {
+			m.Project.Voice.Instruct = strings.Join(parts[1:], " ")
+			_ = SaveProject(m.Project)
+			m.StatusMsg = fmt.Sprintf("Voice style set to '%s'", m.Project.Voice.Instruct)
+		} else if m.Project != nil {
+			m.StatusMsg = fmt.Sprintf("Current voice style: '%s'", m.Project.Voice.Instruct)
 		}
 
 	default:

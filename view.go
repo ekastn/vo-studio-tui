@@ -161,8 +161,10 @@ func (m *AppModel) renderFrameList(width, height int) string {
 	for i := startIdx; i < endIdx; i++ {
 		f := frames[i]
 		isCur := (i == m.CursorIdx)
+		isPlaying := m.IsPlaying && m.PlayingFrameID == f.ID
+		isJob := m.ActiveJobs[f.ID]
 
-		badge := formatFrameBadge(f)
+		badge := formatFrameBadge(f, isJob, m.Spinner.View(), isPlaying)
 		preview := f.Text
 		if preview == "" && f.Name != "" {
 			preview = f.Name
@@ -198,9 +200,18 @@ func (m *AppModel) renderFrameList(width, height int) string {
 }
 
 // formatFrameBadge produces a status indicator string for a frame.
-func formatFrameBadge(f *Frame) string {
+func formatFrameBadge(f *Frame, isJob bool, spinner string, isPlaying bool) string {
+	if isJob {
+		return lipgloss.NewStyle().Foreground(warningColor).Render(spinner + " [Rendering]")
+	}
+	if isPlaying {
+		return lipgloss.NewStyle().Foreground(primaryColor).Bold(true).Render("▶ [Playing]")
+	}
 	switch f.Status {
 	case StatusPadded:
+		if f.RawDuration > 0 {
+			return lipgloss.NewStyle().Foreground(successColor).Render(fmt.Sprintf("[%.2fs]", f.RawDuration))
+		}
 		return lipgloss.NewStyle().Foreground(successColor).Render("[Padded]")
 	case StatusRendered:
 		if f.RawDuration > 0 {
@@ -228,11 +239,20 @@ func (m *AppModel) renderDetailPane(width, height int) string {
 	header := lipgloss.NewStyle().Bold(true).Foreground(primaryColor).Render(title)
 
 	// Timeline slot timing
+	startSec := 0.0
+	for _, prevF := range act.Frames {
+		if prevF.ID == f.ID {
+			break
+		}
+		startSec += prevF.SlotDuration
+	}
+	endSec := startSec + f.SlotDuration
+
 	var timeline string
 	if f.SlotDuration > 0 {
-		timeline = fmt.Sprintf("Timeline Slot : Slot %.1fs", f.SlotDuration)
+		timeline = fmt.Sprintf("Timeline Slot : %02d:%02d – %02d:%02d (Slot: %.1fs)", int(startSec)/60, int(startSec)%60, int(endSec)/60, int(endSec)%60, f.SlotDuration)
 	} else {
-		timeline = "Timeline Slot : Natural (unpadded)"
+		timeline = fmt.Sprintf("Timeline Slot : %02d:%02d (Natural / unpadded)", int(startSec)/60, int(startSec)%60)
 	}
 
 	// Audio duration & headroom
@@ -254,30 +274,55 @@ func (m *AppModel) renderDetailPane(width, height int) string {
 
 	// Status line
 	statusColor := inactiveColor
-	switch f.Status {
-	case StatusPadded:
-		statusColor = successColor
-	case StatusRendered:
-		statusColor = activeTabColor
-	case StatusError:
-		statusColor = errorColor
-	case StatusRendering:
+	statusText := f.Status.String()
+	if m.ActiveJobs[f.ID] {
 		statusColor = warningColor
+		statusText = m.Spinner.View() + " Synthesizing Voiceover..."
+	} else if m.IsPlaying && m.PlayingFrameID == f.ID {
+		statusColor = primaryColor
+		statusText = fmt.Sprintf("▶ Playing (%s)", m.PlayingFile)
+	} else {
+		switch f.Status {
+		case StatusPadded:
+			statusColor = successColor
+		case StatusRendered:
+			statusColor = activeTabColor
+		case StatusError:
+			statusColor = errorColor
+		case StatusRendering:
+			statusColor = warningColor
+		}
 	}
-	statusLine := fmt.Sprintf("Status        : %s", lipgloss.NewStyle().Foreground(statusColor).Bold(true).Render(f.Status.String()))
+	statusLine := fmt.Sprintf("Status        : %s", lipgloss.NewStyle().Foreground(statusColor).Bold(true).Render(statusText))
 
 	infoBox := fmt.Sprintf("%s\n%s\n%s\n%s", header, timeline, durStatus, statusLine)
 
 	// Synthesis diagnostics card if rendering or errored
 	var diagBox string
-	if m.ActiveJobs[f.ID] {
-		diagHdr := lipgloss.NewStyle().Bold(true).Foreground(warningColor).Render(m.Spinner.View() + " VoiceStudio Synthesis in Progress...")
+	if m.ActiveJobs[f.ID] && m.Project != nil {
+		diagHdr := lipgloss.NewStyle().Bold(true).Foreground(warningColor).Render(m.Spinner.View() + " VoiceStudio Synthesis in Progress:")
+		voiceCfg := m.Project.Voice
+		if f.VoiceOverride.ProfileID != "" {
+			voiceCfg.ProfileID = f.VoiceOverride.ProfileID
+		}
+		if f.VoiceOverride.Speed != "" {
+			voiceCfg.Speed = f.VoiceOverride.Speed
+		}
+		if f.VoiceOverride.Instruct != "" {
+			voiceCfg.Instruct = f.VoiceOverride.Instruct
+		}
+		stageText := fmt.Sprintf("Sending request -> Receiving raw WAV -> Padding to %.1fs", f.SlotDuration)
+		if f.SlotDuration <= 0 {
+			stageText = "Sending request -> Receiving raw WAV (natural duration)"
+		}
+		diagContent := fmt.Sprintf("Engine : VoiceStudio API (%s)\nProfile: %s (%s, %s)\nSpeed  : %s\nStage  : %s",
+			voiceCfg.APIURL, voiceCfg.ProfileID, voiceCfg.Language, voiceCfg.Instruct, voiceCfg.Speed, stageText)
 		diagBox = lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder()).
 			BorderForeground(warningColor).
 			Padding(0, 1).
 			Width(width - 4).
-			Render(diagHdr)
+			Render(fmt.Sprintf("%s\n%s", diagHdr, diagContent))
 	} else if f.Status == StatusError && f.ErrorMsg != "" {
 		diagHdr := lipgloss.NewStyle().Bold(true).Foreground(errorColor).Render("Synthesis Error:")
 		diagBox = lipgloss.NewStyle().
