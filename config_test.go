@@ -56,3 +56,50 @@ func TestGlobalConfig_LoadSaveAndCascade(t *testing.T) {
 		t.Errorf("Expected inherited audio editor 'reaper', got '%s'", proj.ExternalAudioEditor)
 	}
 }
+
+func TestGlobalConfig_NestedVoiceBlockCascade(t *testing.T) {
+	globalCfg := &GlobalConfig{
+		Voice: VoiceConfig{
+			APIURL:    "http://100.96.85.54:9031/generate",
+			APIToken:  "tok_nested_123",
+			ProfileID: "7341026d",
+			Language:  "Indonesian",
+			Instruct:  "male, middle-aged",
+			Speed:     "0.75",
+		},
+		DefaultAudioEditor: "audacity",
+	}
+
+	// New project with template placeholder values
+	proj := &Project{
+		Voice: VoiceConfig{
+			ProfileID: "default",
+			Language:  "English",
+			Speed:     "1.0",
+		},
+	}
+
+	proj.ApplyGlobalConfig(globalCfg)
+
+	if proj.Voice.APIURL != "http://100.96.85.54:9031/generate" {
+		t.Errorf("Expected cascaded APIURL, got '%s'", proj.Voice.APIURL)
+	}
+	if proj.Voice.APIToken != "tok_nested_123" {
+		t.Errorf("Expected cascaded APIToken, got '%s'", proj.Voice.APIToken)
+	}
+	if proj.Voice.ProfileID != "7341026d" {
+		t.Errorf("Expected cascaded ProfileID '7341026d', got '%s'", proj.Voice.ProfileID)
+	}
+	if proj.Voice.Language != "Indonesian" {
+		t.Errorf("Expected cascaded Language 'Indonesian', got '%s'", proj.Voice.Language)
+	}
+	if proj.Voice.Instruct != "male, middle-aged" {
+		t.Errorf("Expected cascaded Instruct 'male, middle-aged', got '%s'", proj.Voice.Instruct)
+	}
+	if proj.Voice.Speed != "0.75" {
+		t.Errorf("Expected cascaded Speed '0.75', got '%s'", proj.Voice.Speed)
+	}
+	if proj.ExternalAudioEditor != "audacity" {
+		t.Errorf("Expected cascaded audio editor 'audacity', got '%s'", proj.ExternalAudioEditor)
+	}
+}

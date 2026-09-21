@@ -10,10 +10,11 @@ import (
 
 // GlobalConfig holds user-wide connection parameters and tool defaults.
 type GlobalConfig struct {
-	APIURL                string `json:"api_url"`
-	APIToken              string `json:"token"`
-	DefaultSpeakerProfile string `json:"default_speaker_profile"`
-	DefaultAudioEditor    string `json:"default_audio_editor"`
+	APIURL                string      `json:"api_url"`
+	APIToken              string      `json:"token"`
+	DefaultSpeakerProfile string      `json:"default_speaker_profile,omitempty"`
+	DefaultAudioEditor    string      `json:"default_audio_editor,omitempty"`
+	Voice                 VoiceConfig `json:"voice,omitempty"`
 }
 
 // DefaultGlobalConfig returns recommended starting configuration values.
@@ -66,15 +67,45 @@ func (p *Project) ApplyGlobalConfig(cfg *GlobalConfig) {
 		return
 	}
 
+	apiURL := cfg.APIURL
+	if apiURL == "" && cfg.Voice.APIURL != "" {
+		apiURL = cfg.Voice.APIURL
+	}
 	if p.Voice.APIURL == "" {
-		p.Voice.APIURL = cfg.APIURL
+		p.Voice.APIURL = apiURL
+	}
+
+	token := cfg.APIToken
+	if token == "" && cfg.Voice.APIToken != "" {
+		token = cfg.Voice.APIToken
 	}
 	if p.Voice.APIToken == "" {
-		p.Voice.APIToken = cfg.APIToken
+		p.Voice.APIToken = token
 	}
-	if p.Voice.ProfileID == "" && cfg.DefaultSpeakerProfile != "" {
-		p.Voice.ProfileID = cfg.DefaultSpeakerProfile
+
+	profile := cfg.DefaultSpeakerProfile
+	if profile == "" && cfg.Voice.ProfileID != "" {
+		profile = cfg.Voice.ProfileID
 	}
+	if (p.Voice.ProfileID == "" || p.Voice.ProfileID == "default") && profile != "" {
+		p.Voice.ProfileID = profile
+	}
+
+	speed := cfg.Voice.Speed
+	if (p.Voice.Speed == "" || p.Voice.Speed == "1.0") && speed != "" {
+		p.Voice.Speed = speed
+	}
+
+	language := cfg.Voice.Language
+	if (p.Voice.Language == "" || p.Voice.Language == "English") && language != "" {
+		p.Voice.Language = language
+	}
+
+	instruct := cfg.Voice.Instruct
+	if p.Voice.Instruct == "" && instruct != "" {
+		p.Voice.Instruct = instruct
+	}
+
 	if p.ExternalAudioEditor == "" {
 		if cfg.DefaultAudioEditor != "" {
 			p.ExternalAudioEditor = cfg.DefaultAudioEditor

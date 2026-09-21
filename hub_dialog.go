@@ -118,6 +118,7 @@ func (m *AppModel) handleDialogKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			proj.ApplyGlobalConfig(m.GlobalConfig)
+			_ = SaveProject(proj)
 			if m.Registry == nil {
 				m.Registry = &Registry{}
 			}
