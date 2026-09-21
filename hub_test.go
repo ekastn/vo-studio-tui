@@ -70,3 +70,71 @@ func TestHub_NavigationAndSelection(t *testing.T) {
 		t.Errorf("Expected ModeHub after Ctrl+P, got %v", m.Mode)
 	}
 }
+
+func TestOpenDirectory_HubAndNormal(t *testing.T) {
+	t.Setenv("FILE_MANAGER", "true")
+
+	tempDir := t.TempDir()
+	p1, err := CreateNewProject(tempDir, "Project Alpha", 10.0)
+	if err != nil {
+		t.Fatalf("Failed to create p1: %v", err)
+	}
+
+	reg := &Registry{}
+	reg.Register(p1.Name, p1.RootPath)
+	regPath := filepath.Join(tempDir, "registry.json")
+
+	m := NewHubModel(reg, regPath)
+
+	// In Hub mode, press 'o' to open highlighted project directory
+	newM, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}})
+	m = newM.(*AppModel)
+	if cmd == nil {
+		t.Fatalf("Expected non-nil cmd for 'o' key in hub")
+	}
+	msg := cmd()
+	openedMsg, ok := msg.(DirectoryOpenedMsg)
+	if !ok || openedMsg.Err != nil || openedMsg.Path != p1.RootPath {
+		t.Errorf("Expected DirectoryOpenedMsg for p1, got %+v", msg)
+	}
+
+	// Update with DirectoryOpenedMsg
+	newM, _ = m.Update(openedMsg)
+	m = newM.(*AppModel)
+	expectedStatus := "Opened directory: " + filepath.Base(p1.RootPath)
+	if m.StatusMsg != expectedStatus {
+		t.Errorf("Expected status message '%s', got '%s'", expectedStatus, m.StatusMsg)
+	}
+
+	// Now enter project
+	newM, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = newM.(*AppModel)
+	if m.Mode != ModeNormal {
+		t.Fatalf("Expected ModeNormal, got %v", m.Mode)
+	}
+
+	// In Normal mode, press 'O' to open active project directory
+	newM, cmd = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'O'}})
+	m = newM.(*AppModel)
+	if cmd == nil {
+		t.Fatalf("Expected non-nil cmd for 'O' key in normal mode")
+	}
+	msg = cmd()
+	openedMsg, ok = msg.(DirectoryOpenedMsg)
+	if !ok || openedMsg.Err != nil || openedMsg.Path != p1.RootPath {
+		t.Errorf("Expected DirectoryOpenedMsg for p1 root path, got %+v", msg)
+	}
+
+	// Test :dir command
+	m.CmdInput.SetValue("dir")
+	newM, cmd = m.executeCommand("dir")
+	m = newM.(*AppModel)
+	if cmd == nil {
+		t.Fatalf("Expected non-nil cmd for :dir command")
+	}
+	msg = cmd()
+	openedMsg, ok = msg.(DirectoryOpenedMsg)
+	if !ok || openedMsg.Err != nil || openedMsg.Path != p1.RootPath {
+		t.Errorf("Expected DirectoryOpenedMsg for p1 root path from :dir, got %+v", msg)
+	}
+}

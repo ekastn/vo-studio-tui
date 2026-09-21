@@ -161,6 +161,12 @@ func (m *AppModel) executeCommand(cmdStr string) (tea.Model, tea.Cmd) {
 			return m, openAudioEditorCmd(editor, []string{f.RawPath, f.PaddedPath})
 		}
 
+	case "dir", "open":
+		if m.Project != nil && m.Project.RootPath != "" {
+			m.StatusMsg = fmt.Sprintf("Opening project directory: %s...", filepath.Base(m.Project.RootPath))
+			return m, openDirectoryCmd(m.Project.RootPath)
+		}
+
 	case "speed":
 		if len(parts) > 1 && m.Project != nil {
 			m.Project.Voice.Speed = parts[1]

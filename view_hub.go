@@ -248,7 +248,7 @@ func (m *AppModel) renderHubProjectDetails(width, height int) string {
 // renderHubStatusBar creates the bottom status bar for the Project Hub.
 func (m *AppModel) renderHubStatusBar(width int) string {
 	badge := statusBadgeNormal.Render("HUB")
-	actions := lipgloss.NewStyle().Foreground(fgBrightColor).Render(" [Enter] Open  [n] New Project  [a] Register Path  [d] Unregister  [q] Quit ")
+	actions := lipgloss.NewStyle().Foreground(fgBrightColor).Render(" [Enter] Open  [o] Open Dir  [n] New Project  [a] Register Path  [d] Unregister  [q] Quit ")
 
 	statusText := ""
 	if m.StatusMsg != "" {

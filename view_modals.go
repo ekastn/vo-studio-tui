@@ -41,6 +41,7 @@ Audio & Narration:
   m / M                  Open Act master / Full master in audio editor
 
 General:
+  O                      Open project directory in file manager
   :                      Enter Command mode (:assemble, :speed, :q)
   /                      Search frames by text or ID
   c                      Open project configuration modal

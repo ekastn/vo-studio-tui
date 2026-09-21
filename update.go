@@ -97,6 +97,14 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case DirectoryOpenedMsg:
+		if msg.Err != nil {
+			m.StatusMsg = fmt.Sprintf("Directory error: %v", msg.Err)
+		} else {
+			m.StatusMsg = fmt.Sprintf("Opened directory: %s", filepath.Base(msg.Path))
+		}
+		return m, nil
+
 	case AssembleCompleteMsg:
 		if msg.Err != nil {
 			m.StatusMsg = fmt.Sprintf("Assemble error: %v", msg.Err)
@@ -345,6 +353,12 @@ func (m *AppModel) handleNormalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			editor := m.Project.ExternalAudioEditor
 			m.StatusMsg = fmt.Sprintf("Opening frame %02d in %s...", f.ID, editor)
 			return m, openAudioEditorCmd(editor, []string{f.RawPath, f.PaddedPath})
+		}
+
+	case "O":
+		if m.Project != nil && m.Project.RootPath != "" {
+			m.StatusMsg = fmt.Sprintf("Opening project directory: %s...", filepath.Base(m.Project.RootPath))
+			return m, openDirectoryCmd(m.Project.RootPath)
 		}
 
 	case "m":

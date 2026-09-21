@@ -51,6 +51,13 @@ func (m *AppModel) handleHubKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+	case "o", "O":
+		if projCount > 0 && m.HubCursorIdx >= 0 && m.HubCursorIdx < projCount {
+			entry := m.Registry.Projects[m.HubCursorIdx]
+			m.StatusMsg = fmt.Sprintf("Opening directory: %s...", entry.Name)
+			return m, openDirectoryCmd(entry.Path)
+		}
+
 	case "n":
 		m.Mode = ModeDialog
 		m.DialogAction = "new_project"

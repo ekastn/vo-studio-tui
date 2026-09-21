@@ -86,6 +86,28 @@ func openAudioEditorCmd(editorCmd string, paths []string) tea.Cmd {
 	}
 }
 
+// DirectoryOpenedMsg is dispatched when opening a folder in the file manager.
+type DirectoryOpenedMsg struct {
+	Path string
+	Err  error
+}
+
+// openDirectoryCmd opens the specified directory in the system file manager using xdg-open.
+func openDirectoryCmd(dirPath string) tea.Cmd {
+	return func() tea.Msg {
+		cmdName := "xdg-open"
+		if fm := os.Getenv("FILE_MANAGER"); fm != "" {
+			cmdName = fm
+		}
+		cmd := exec.Command(cmdName, dirPath)
+		cmd.Stdout = nil
+		cmd.Stderr = nil
+		cmd.Stdin = nil
+		err := cmd.Start()
+		return DirectoryOpenedMsg{Path: dirPath, Err: err}
+	}
+}
+
 // padFrameCmd pads or trims a raw audio file to slotDur seconds using ffmpeg.
 func padFrameCmd(rawPath, paddedPath string, slotDur float64) error {
 	dir := filepath.Dir(paddedPath)
